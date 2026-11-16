@@ -884,6 +884,30 @@ class TestNotificationServiceReportGeneration(unittest.TestCase):
                     )
 
     @mock.patch("src.notification.get_config")
+    def test_brief_preserves_complete_takeaway_and_fallback(self, mock_get_config):
+        takeaway = (
+            "Wait for a confirmed recovery before adding to this position; "
+            "strong recent momentum does not remove the risk of a reversal."
+        )
+        for renderer_enabled in (False, True):
+            for use_dashboard in (False, True):
+                with self.subTest(renderer_enabled=renderer_enabled, use_dashboard=use_dashboard):
+                    config = _make_config(report_renderer_enabled=renderer_enabled)
+                    mock_get_config.return_value = config
+                    result = self._source_result("AAA", "Alpha", 80, "")
+                    result.report_language = "en"
+                    result.analysis_summary = takeaway
+                    result.dashboard = (
+                        {"core_conclusion": {"one_sentence": takeaway}}
+                        if use_dashboard else {}
+                    )
+                    with mock.patch("src.services.report_renderer.get_config", return_value=config):
+                        output = NotificationService().generate_brief_report(
+                            [result], report_date="2026-11-10"
+                        )
+                    self.assertIn(takeaway, output)
+
+    @mock.patch("src.notification.get_config")
     def test_brief_sources_are_isolated_in_builtin_and_template_renderers(
         self, mock_get_config: mock.MagicMock
     ):
